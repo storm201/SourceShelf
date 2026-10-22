@@ -501,6 +501,8 @@ def main() -> int:
                     help="how many repos to resolve release assets for (-1 = auto)")
     ap.add_argument("--force", action="store_true", help="ignore search cache")
     ap.add_argument("--queries", type=int, default=0, help="limit #queries (debug)")
+    ap.add_argument("--no-carry", action="store_true",
+                    help="drop apps the search did not return (catalog may shrink)")
     ap.add_argument("--no-supabase", action="store_true",
                     help="skip Supabase history (use local data/apps.json only)")
     ap.add_argument("--offline", action="store_true",
@@ -525,6 +527,8 @@ def main() -> int:
     # ---------------------------------------------------------- 1. search
     queries = QUERIES[: args.queries] if args.queries else QUERIES
     raw: dict[str, dict] = {}
+    search_ok = search_failed = 0
+    retry_later: list[str] = []
     for i, q in enumerate(queries, 1):
         q_full = f"{q} fork:false archived:false"
         key = hashlib.sha1(q_full.encode()).hexdigest()[:16]
@@ -539,12 +543,15 @@ def main() -> int:
                 "q": q_full, "sort": "stars", "order": "desc", "per_page": 100,
             })
             if not res:
-                print(f"  [{i}/{len(queries)}] {q[:52]:<52} -> failed", flush=True)
+                search_failed += 1
+                retry_later.append(q)
+                print(f"  [{i}/{len(queries)}] {q[:52]:<52} -> FAILED", flush=True)
                 spaced("search", gap)
                 continue
             items = res.get("items", [])
             cf.write_text(json.dumps({"q": q_full, "items": items}), encoding="utf-8")
             spaced("search", gap)
+        search_ok += 1
         new = 0
         for it in items:
             fn = it["full_name"]
@@ -553,7 +560,39 @@ def main() -> int:
                 new += 1
         print(f"  [{i}/{len(queries)}] {q[:52]:<52} -> {len(items):3d} (+{new})", flush=True)
 
-    print(f"\nunique repos from search: {len(raw)}", flush=True)
+    # One slower second pass over whatever failed. Search rate limits are per
+    # minute, so by now several of them will succeed; this is what stops a
+    # hungry crawler from quietly producing a 977-app catalog instead of 1,619.
+    if retry_later and not args.force:
+        print(f"\nretrying {len(retry_later)} failed search(es)…", flush=True)
+        still: list[str] = []
+        for q in retry_later:
+            q_full = f"{q} fork:false archived:false"
+            key = hashlib.sha1(q_full.encode()).hexdigest()[:16]
+            cf = CACHE / f"search_{key}.json"
+            res = gh("/search/repositories", {
+                "q": q_full, "sort": "stars", "order": "desc", "per_page": 100,
+            })
+            if not res:
+                still.append(q)
+                continue
+            items = res.get("items", [])
+            cf.write_text(json.dumps({"q": q_full, "items": items}), encoding="utf-8")
+            for it in items:
+                raw.setdefault(it["full_name"], it)
+            search_ok += 1
+            search_failed -= 1
+            print(f"  retry {q[:48]:<48} -> {len(items):3d}", flush=True)
+            spaced("search", gap * 2.5)
+        retry_later = still
+
+    print(f"\nunique repos from search: {len(raw)}  "
+          f"({search_ok}/{len(queries)} queries ok, {search_failed} failed)", flush=True)
+    if search_failed:
+        print(f"  !! {search_failed} of {len(queries)} searches did not return "
+              f"results (rate limit or network). Apps already in the database "
+              f"are carried over below so the catalog does not shrink.",
+              flush=True)
 
     # ------------------------------------------------- 2. filter & classify
     apps: list[dict] = []
@@ -660,6 +699,40 @@ def main() -> int:
             print(f"supabase: unavailable ({e}) — using local history", flush=True)
     if not args.no_supabase and not supabase_ok:
         print("supabase: no remote history — using last local data/apps.json",
+              flush=True)
+
+    # ------------------------------------------------- 4b. never shrink
+    #
+    # A search query can come back empty (rate limit, flaky network). If we
+    # simply wrote what this run saw, the catalog would silently lose hundreds
+    # of apps — which is exactly what happened on GitHub Actions when 977 of
+    # 1619 survived. So: anything the database already knows, that the search
+    # did not return, is kept, with the numbers from the last run that did see
+    # it. Nothing is invented; `last_seen` in the database still shows when.
+    carried = 0
+    if store_connected and not args.no_carry:
+        try:
+            rows = supabase_store.fetch_catalog(store, verbose=False)
+        except Exception as e:
+            rows = []
+            print(f"history: could not read catalog ({e})", flush=True)
+        have = {a["id"] for a in apps}
+        keep = []
+        for r in rows:
+            if r.get("id") in have:
+                continue
+            a = supabase_store.row_to_app(r)
+            if a["stars"] < min_stars:      # respects today's star floor
+                continue
+            a["carried"] = True
+            keep.append(a)
+        if keep:
+            apps.extend(keep)
+            apps.sort(key=lambda a: -a["stars"])
+            apps = apps[: args.max_apps]
+        carried = len(keep)
+        print(f"history: {carried} apps kept from the database "
+              f"(not returned by search this run) → catalog {len(apps)}",
               flush=True)
 
     had_history = bool(remote_first_seen) or any(

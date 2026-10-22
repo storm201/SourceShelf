@@ -221,6 +221,58 @@ def fetch_first_seen(store: Store, verbose: bool = True) -> dict[str, str]:
     return out
 
 
+CATALOG_COLS = ("id,name,owner,url,homepage,description,stars,forks,language,"
+                "license,category,platforms,topics,repo_created_at,"
+                "repo_pushed_at,release,first_seen")
+
+
+def fetch_catalog(store: Store, verbose: bool = True) -> list[dict]:
+    """Every stored app, as rows. Used to keep the catalog from shrinking when a
+    crawl comes back short (search rate limits, a failed query)."""
+    try:
+        rows = store.select("apps", {"select": CATALOG_COLS}, paginate=True)
+    except SupabaseError as e:
+        if verbose:
+            print(f"  !! could not read catalog: {e}")
+        return []
+    return rows
+
+
+def row_to_app(r: dict) -> dict:
+    """Inverse of app_to_row: a DB row back into the crawler's app shape."""
+    def d(v):
+        return str(v)[:10] if v else ""
+
+    pushed = d(r.get("repo_pushed_at"))
+    age = 9999
+    if pushed:
+        try:
+            age = (date.today() - date.fromisoformat(pushed)).days
+        except ValueError:
+            pass
+    return {
+        "id": r["id"],
+        "name": r.get("name") or r["id"].split("/")[-1],
+        "owner": r.get("owner") or r["id"].split("/")[0],
+        "url": r.get("url") or f"https://github.com/{r['id']}",
+        "homepage": r.get("homepage"),
+        "description": r.get("description") or "",
+        "stars": int(r.get("stars") or 0),
+        "forks": int(r.get("forks") or 0),
+        "language": r.get("language"),
+        "license": r.get("license"),
+        "topics": list(r.get("topics") or []),
+        "category": r.get("category") or "Other",
+        "platforms": list(r.get("platforms") or []),
+        "createdAt": d(r.get("repo_created_at")),
+        "pushedAt": pushed,
+        "ageDays": age,
+        "archived": False,
+        "release": r.get("release"),
+        "firstSeen": d(r.get("first_seen")),
+    }
+
+
 def fetch_new_arrivals(store: Store, days: int = 7, limit: int = 200) -> list[dict]:
     since = (date.today() - __import__("datetime").timedelta(days=days)).isoformat()
     return store.select("apps", {

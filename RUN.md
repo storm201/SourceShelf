@@ -242,7 +242,28 @@ python3 scripts/supabase_store.py --stats
 You can also look in Supabase → **Table Editor** → `apps` — you'll see 1,619 rows
 with a filled `first_seen` column. **That's your storage working.**
 
-### Step 18. Confirm the site reads from it
+### Step 18. Bake the keys into the page
+
+This is the step that makes the header say **Live · Supabase** instead of
+**JSON snapshot**.
+
+`update.py` writes your apps into the database. It does **not** write the
+connection details into the page — only this command does:
+
+```
+python3 scripts/build_single.py
+```
+
+✅ You want this exact line:
+```
+supabase config: injected
+```
+
+❌ If it says `supabase config: none`, your `.env` isn't in this folder or is
+missing `SUPABASE_URL` / `SUPABASE_ANON_KEY`. Redo Step 13–14, then run this again.
+The page will work either way — it just falls back to the bundled JSON snapshot.
+
+### Step 19. Confirm the site reads from it
 
 ```
 python3 scripts/serve.py
@@ -258,7 +279,7 @@ Press `Ctrl+C` when done.
 
 # PHASE 3 — Put it online with a daily cron (10 minutes)
 
-### Step 19. Check your secrets won't be uploaded
+### Step 20. Check your secrets won't be uploaded
 
 ```
 git init
@@ -268,7 +289,7 @@ git status
 ✅ `.env` is **NOT** in the list (`.gitignore` excludes it)
 ❌ If `.env` appears — stop, tell me, don't commit.
 
-### Step 20. Commit the code
+### Step 21. Commit the code
 
 ```
 git add .
@@ -276,7 +297,7 @@ git commit -m "SourceShelf"
 git branch -M main
 ```
 
-### Step 21. Create the GitHub repo
+### Step 22. Create the GitHub repo
 
 Go to **https://github.com/new**
 
@@ -288,7 +309,7 @@ Go to **https://github.com/new**
 
 Click **Create repository**.
 
-### Step 22. Connect and push
+### Step 23. Connect and push
 
 GitHub shows a "quick setup" page. Use the **"…or push an existing repository"** block:
 
@@ -299,7 +320,7 @@ git push -u origin main
 
 ✅ Reload the GitHub page — your files are there, and `.env` is **not** among them.
 
-### Step 23. Add the database secrets
+### Step 24. Add the database secrets
 
 Repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**.
 Add these three, one at a time (Name on top, Value below, click *Add secret*):
@@ -310,7 +331,7 @@ Add these three, one at a time (Name on top, Value below, click *Add secret*):
 | `SUPABASE_SERVICE_KEY` | service_role key |
 | `SUPABASE_ANON_KEY` | anon key |
 
-### Step 24. Add the site URL variable
+### Step 25. Add the site URL variable
 
 Same page → **Variables** tab → **New repository variable**:
 
@@ -318,13 +339,13 @@ Same page → **Variables** tab → **New repository variable**:
 |---|---|
 | `SITE_URL` | `https://YOURNAME.github.io/sourceshelf` |
 
-### Step 25. Turn on Pages
+### Step 26. Turn on Pages
 
 **Settings** → **Pages** → *Build and deployment* → **Source: `GitHub Actions`**
 
 ⚠️ This dropdown, not "Deploy from a branch".
 
-### Step 26. Run the automation once, manually
+### Step 27. Run the automation once, manually
 
 **Actions** tab → left sidebar **Refresh catalog & deploy** → right side **Run workflow**
 → leave defaults → **Run workflow**.
@@ -338,7 +359,7 @@ Watch it for 5–10 minutes.
 
 Open it. Top-right should be 🟢 **Live · Supabase**.
 
-### Step 27. Done — verify tomorrow
+### Step 28. Done — verify tomorrow
 
 Nothing more to do. It runs **every night at 03:17 UTC (08:47 IST)**.
 
@@ -363,6 +384,7 @@ what it found that day.
 | update apps now (fast) | `python3 scripts/update.py --quick` |
 | update apps + download links | `python3 scripts/update.py` |
 | check everything works | `python3 scripts/selftest.py` |
+| build the single-file page + inject keys | `python3 scripts/build_single.py` |
 | which copy am I looking at? | `python3 scripts/doctor.py` |
 | reset "new arrivals" to a clean baseline | `python3 scripts/reset_seed.py` |
 | see database row counts | `python3 scripts/supabase_store.py --stats` |
@@ -373,9 +395,11 @@ what it found that day.
 
 # Things that trip people up
 
-1. **Double-clicking `sourceshelf.html` won't show the Supabase data.**
-   Browsers block `file://` pages from making network calls. Use
-   `python3 scripts/serve.py` locally, or the deployed `https://` site.
+1. **Double-clicking works, but tells you nothing about which copy it is.**
+   The page is plain files, and Supabase allows reads from anywhere, so a
+   double-clicked `sourceshelf.html` shows live data just fine.
+   Use `python3 scripts/serve.py` when you want it to *print* the folder and
+   the page timestamp it is serving — that's how you catch a stale copy.
 
 2. **Double-clicking shows old data after an update.**
    `update.py` rewrites the file — reload or reopen it.
@@ -403,6 +427,25 @@ what it found that day.
 
 6. **Notepad saves `.env` as `.env.txt`.** In *Save as*, choose *All files*.
 
+7. **The live site shows fewer apps than your local copy (e.g. 977 instead of 1,619).**
+   GitHub's search API only allows ~30 requests a minute. The crawl runs 67
+   searches, so on a slow night some of them come back empty and that run
+   simply sees fewer repos. Two things now protect you:
+
+   - the crawl **retries** every failed search once, slower;
+   - anything already in the database that search missed is **carried over**,
+     so the catalog never shrinks.
+
+   The crawl log says it plainly:
+   ```
+   unique repos from search: 1402  (64/67 queries ok, 3 failed)
+   history: 217 apps kept from the database (not returned by search this run)
+   ```
+
+   If you see that line and the number is still low, your database is smaller
+   than you think — run `python scripts/build_single.py` locally (your PC has a
+   full search cache) and let the next nightly run take it from there.
+
 ---
 
 # Where things live
@@ -417,7 +460,9 @@ sourceshelf/
 ├── data/apps.json        ← the JSON fallback dataset
 ├── scripts/
 │   ├── update.py         ← crawl + rebuild
-│   ├── serve.py          ← local preview
+│   ├── build_single.py   ← rebuild sourceshelf.html + inject Supabase keys
+│   ├── serve.py          ← local preview (prints the folder it serves)
+│   ├── doctor.py         ← which copy am I actually looking at?
 │   ├── selftest.py       ← verify everything
 │   └── supabase_store.py ← database client
 ├── supabase/schema.sql   ← paste into Supabase SQL editor
