@@ -119,7 +119,8 @@ jobs:
             echo "No changes today."
           else
             git commit -m "chore(data): refresh catalog $(date -u +%Y-%m-%d) [+${{ steps.build.outputs.new_today }} new]"
-            git push
+            git pull --rebase origin main
+            git push origin main
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
