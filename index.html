@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SourceShelf — every open-source app on one shelf</title>
+<meta name="description" content="SourceShelf — a fast, filterable shelf of popular open-source desktop, mobile, web and self-hosted apps. Crawled from GitHub every night, with direct download links.">
+<link rel="stylesheet" href="assets/app.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230a0b10'/><rect x='5' y='9' width='4.4' height='12' rx='1.4' fill='%234ade9b'/><rect x='10.6' y='6' width='4.4' height='15' rx='1.4' fill='%2338bdf8'/><rect x='16.2' y='11' width='4.4' height='10' rx='1.4' fill='%23a78bfa'/><rect x='21.8' y='8' width='4.4' height='13' rx='1.4' fill='%234ade9b' fill-opacity='.45'/><path d='M4 23h24' stroke='%234ade9b' stroke-width='2.2' stroke-linecap='round'/></svg>">
+</head>
+<body>
+
+<header class="top">
+  <div class="top-in">
+    <a class="brand" href="./" title="SourceShelf home">
+      <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <!-- four app spines standing on a shelf -->
+        <rect x="4.2" y="10.5" width="4.6" height="12.5" rx="1.5" fill="#4ade9b" fill-opacity=".9"/>
+        <rect x="10.4" y="6.5" width="4.6" height="16.5" rx="1.5" fill="#38bdf8" fill-opacity=".9"/>
+        <rect x="16.6" y="12.5" width="4.6" height="10.5" rx="1.5" fill="#a78bfa" fill-opacity=".9"/>
+        <rect x="22.8" y="8.5" width="4.6" height="14.5" rx="1.5" fill="#4ade9b" fill-opacity=".42"/>
+        <!-- shelf boards -->
+        <path d="M2.5 24.2h27" stroke="#4ade9b" stroke-width="2.3" stroke-linecap="round"/>
+        <path d="M5 28.2h22" stroke="#4ade9b" stroke-opacity=".32" stroke-width="1.6" stroke-linecap="round"/>
+      </svg>
+      <span class="brand-txt"><b>SOURCESHELF</b><span>the open-source app shelf</span></span>
+    </a>
+
+    <div class="search-wrap" id="qwrap">
+      <input id="q" class="search" type="search" placeholder="Search apps, categories, languages…" autocomplete="off" spellcheck="false" aria-label="Search apps">
+      <span class="search-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></span>
+      <span class="kbd"><kbd>/</kbd></span>
+      <button class="search-clear" id="qclear" aria-label="Clear search"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+
+    <nav class="top-nav">
+      <button class="navbtn" id="nav-all" data-view="all">All apps</button>
+      <button class="navbtn" id="nav-new" data-view="new">New arrivals<span class="navbadge" id="nav-badge" hidden>0</span></button>
+    </nav>
+
+    <div class="top-meta">
+      <span class="live-pill" id="data-source" title="Where this page is reading apps from">
+        <i></i><span>checking storage…</span>
+      </span>
+      <span id="updated" style="font-family:var(--mono);font-size:11px"></span>
+    </div>
+    <button class="icon-btn" id="menu" aria-label="Filters">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="shell">
+  <!-- ------------------------------------------------------- sidebar -->
+  <aside class="side" id="side">
+    <div class="fgroup">
+      <h3>Minimum stars</h3>
+      <div class="range-row">
+        <input type="range" id="star-range" min="0" max="50000" step="500" value="0">
+        <span class="stars-val" id="stars-val">any</span>
+      </div>
+      <label class="chk" style="margin-top:8px"><input type="checkbox" id="recent">
+        <span>Updated in last 6 months</span></label>
+    </div>
+
+    <div class="fgroup">
+      <h3>Category <button data-clear="cat">reset</button></h3>
+      <div id="f-cats"></div>
+    </div>
+
+    <div class="fgroup">
+      <h3>Platform</h3>
+      <div id="f-plats"></div>
+    </div>
+
+    <div class="fgroup">
+      <h3>License</h3>
+      <div id="f-lics"></div>
+    </div>
+
+    <div class="fgroup" style="color:var(--dim);font-size:11px;line-height:1.6">
+      Data crawled from the public GitHub API. Every project listed is free and
+      open source — check its license before redistributing.
+    </div>
+  </aside>
+
+  <!-- ---------------------------------------------------------- main -->
+  <main class="main">
+    <div class="hero">
+      <h1 id="hero-title">Every open-source app worth installing, <em>on one shelf</em></h1>
+      <p id="hero-sub">Crawled nightly from GitHub.</p>
+    </div>
+
+    <!-- ============ daily new arrivals (fed by the automation) ============ -->
+    <section id="newstrip" class="newstrip" hidden aria-labelledby="newstrip-t">
+      <div class="ns-head">
+        <div class="ns-title">
+          <span class="ns-dot"></span>
+          <h2 id="newstrip-t">Added today</h2>
+          <span class="ns-count" id="ns-count"></span>
+        </div>
+        <button class="ns-more" id="ns-more">See all new arrivals →</button>
+      </div>
+      <div class="ns-rail" id="ns-rail"></div>
+    </section>
+
+    <div id="tiles-wrap"><div class="tiles" id="tiles"></div></div>
+
+    <!-- ============ full grouped-by-day view ============ -->
+    <section id="newview" class="newview" hidden aria-labelledby="newview-t">
+      <div class="nv-head">
+        <h2 id="newview-t">New arrivals</h2>
+        <p id="newview-sub"></p>
+      </div>
+      <div id="newview-body"></div>
+    </section>
+
+    <div class="toolbar">
+      <span class="result-count" id="count"></span>
+      <span class="spacer"></span>
+      <span class="chips">
+      </span>
+      <select class="select" id="sort" aria-label="Sort by">
+        <option value="stars">Most stars</option>
+        <option value="added">Newest additions</option>
+        <option value="gain">Biggest gain today</option>
+        <option value="trending">Trending</option>
+        <option value="recent">Recently updated</option>
+        <option value="new">Newest projects</option>
+        <option value="forks">Most forks</option>
+        <option value="az">A → Z</option>
+      </select>
+    </div>
+
+    <div class="active-bar" id="active"></div>
+
+    <div class="grid g3" id="grid"></div>
+    <div class="sentinel" id="sentinel"></div>
+    <div class="loading-more" id="load-note"></div>
+  </main>
+</div>
+
+<footer class="foot">
+  <span>SourceShelf · <b id="total">0</b> apps indexed</span>
+  <span>Data: GitHub API · refreshed every night by a scheduled workflow</span>
+  <span>Built for people who'd rather not scroll 40 “awesome-*” lists</span>
+</footer>
+
+<!-- one-line hint, only shown when the build has no database connection -->
+<div class="build-hint" id="build-hint" hidden>
+  This build has no Supabase connection, so it is reading the bundled snapshot.
+  Run <code>python scripts/build_single.py</code> once to connect it.
+  <button id="build-hint-x" aria-label="Dismiss">×</button>
+</div>
+
+<!-- drawer -->
+<div class="scrim" id="scrim"></div>
+<div class="drawer" id="drawer" role="dialog" aria-label="App details">
+  <div class="drawer-h" id="drawer-head"></div>
+  <div class="drawer-b" id="drawer-body"></div>
+</div>
+<div class="scrim" id="scrim-side" style="z-index:94"></div>
+
+<script src="data/config.js"></script>
+<script src="data/apps.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

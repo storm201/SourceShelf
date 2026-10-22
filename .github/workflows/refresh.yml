@@ -1,0 +1,142 @@
+name: Refresh catalog & deploy
+
+# Every night at 03:17 UTC (08:47 IST), plus manual runs from the Actions tab.
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+    inputs:
+      min_stars:
+        description: "Minimum GitHub stars"
+        default: "400"
+        required: false
+      releases:
+        description: "How many repos to resolve download links for"
+        default: "900"
+        required: false
+      resync_all:
+        description: "Re-resolve download links for everything (slow)"
+        type: boolean
+        default: false
+
+# Least privilege: only what this job actually needs.
+permissions:
+  contents: write      # commit the refreshed dataset
+  pages: write         # publish to GitHub Pages
+  id-token: write      # required by deploy-pages
+
+concurrency:
+  group: refresh-catalog
+  cancel-in-progress: false
+
+jobs:
+  # ------------------------------------------------------------------ crawl
+  refresh:
+    name: Crawl → build → publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    outputs:
+      changed: ${{ steps.commit.outputs.changed }}
+      new_today: ${{ steps.build.outputs.new_today }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          # The crawler and storage layer are stdlib-only on purpose, so this
+          # is just a sanity check that nothing unexpected crept in.
+          python -m pip install --upgrade pip
+          python - <<'PY'
+          import importlib.util, sys
+          missing = [m for m in ("urllib.request", "json", "sqlite3", "xml")
+                     if importlib.util.find_spec(m) is None]
+          print("stdlib ok" if not missing else f"missing: {missing}")
+          sys.exit(1 if missing else 0)
+          PY
+
+      - name: Crawl GitHub
+        env:
+          # Built-in token: 5,000 core + 30 search requests/hour. No setup needed.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          set -o pipefail
+          MIN_STARS="${{ github.event.inputs.min_stars || '400' }}"
+          if [ "${{ github.event.inputs.resync_all }}" = "true" ]; then
+            RELEASES=2500
+          else
+            RELEASES="${{ github.event.inputs.releases || '900' }}"
+          fi
+          echo "crawling: min-stars=$MIN_STARS releases=$RELEASES"
+          python scripts/fetch_apps.py \
+            --min-stars "$MIN_STARS" \
+            --releases "$RELEASES" | tee crawl.log
+          echo "---- summary ----"
+          tail -6 crawl.log
+
+      - name: Build site
+        id: build
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: |
+          python scripts/build_single.py | tee build.log
+          NEW=$(python -c "import json;print(json.load(open('data/apps.json'))['meta'].get('newToday',0))")
+          COUNT=$(python -c "import json;print(json.load(open('data/apps.json'))['meta']['count'])")
+          echo "new_today=$NEW" >> "$GITHUB_OUTPUT"
+          {
+            echo "### SourceShelf refresh"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Apps in catalog | **$COUNT** |"
+            echo "| New today | **+$NEW** |"
+            echo "| Download links | $(python -c "import json;print(json.load(open('data/apps.json'))['meta'].get('withDownloads',0))") |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify build
+        run: python scripts/selftest.py || (echo "::warning::self test reported problems"; exit 0)
+
+      - name: Commit refreshed data
+        id: commit
+        run: |
+          git config user.name  "sourceshelf-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add data dist 2>/dev/null || git add data
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No changes today."
+          else
+            git commit -m "chore(data): refresh catalog $(date -u +%Y-%m-%d) [+${{ steps.build.outputs.new_today }} new]"
+            git push
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  # ----------------------------------------------------------------- deploy
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: refresh
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

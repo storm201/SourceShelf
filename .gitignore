@@ -1,0 +1,15 @@
+# secrets — never commit
+.env
+.env.local
+
+# local caches (regenerated every run)
+cache/
+__pycache__/
+*.pyc
+.DS_Store
+
+# build artifacts, rebuilt by scripts/build_single.py
+dist/
+
+# logs
+*.log
