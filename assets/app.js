@@ -257,10 +257,32 @@
   }
 
   function buildTiles() {
-    const top = [...F.cats.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
-    $("#tiles").innerHTML = top.map(([c, n]) =>
-      `<button class="tile" data-cat="${esc(c)}"><div class="ti">${catIcon(c)}</div><b>${esc(c)}</b><span>${n} app${n === 1 ? "" : "s"}</span></button>`
+    const desired = ["Developer Tools", "AI & LLM", "Self-Hosting & Homelab", "Privacy & Security", "Productivity"];
+    const sorted = [...F.cats.entries()].sort((a, b) => b[1] - a[1]);
+    const picked = [];
+    for (const name of desired) {
+      if (F.cats.has(name)) picked.push([name, F.cats.get(name)]);
+    }
+    for (const [name, count] of sorted) {
+      if (picked.length >= 5) break;
+      if (!picked.some(([p]) => p === name)) picked.push([name, count]);
+    }
+
+    const html = picked.map(([c, n]) =>
+      `<button class="tile" data-cat="${esc(c)}" title="Filter by ${esc(c)}">
+        <span class="ti">${catIcon(c)}</span>
+        <b class="t-name">${esc(c)}</b>
+        <span class="t-count">${n}</span>
+      </button>`
     ).join("");
+
+    const moreBtn = `<button class="tile tile-more" id="tile-more" aria-label="Explore all categories" title="Explore all categories">
+      <span class="ti"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></span>
+      <b class="t-name">All categories</b>
+      <span class="t-count">${F.cats.size}</span>
+    </button>`;
+
+    $("#tiles").innerHTML = html + moreBtn;
   }
 
   // ---------------------------------------------------------- filter
@@ -421,11 +443,11 @@
     if (strip && !strip.hidden) strip.style.display = browsing ? "none" : "";
     $("#hero-title").innerHTML = browsing
       ? (S.cats.length === 1 ? esc(S.cats[0]) : "Search results")
-      : `Every open-source app worth installing, <em>on one shelf</em>`;
+      : `Find your next open-source app.`;
     $("#hero-sub").innerHTML = browsing
       ? (n ? `${n.toLocaleString()} matching app${n === 1 ? "" : "s"}.`
            : "Nothing in the catalogue matches.")
-      : `Crawled nightly from GitHub — <b>${ALL.length.toLocaleString()} apps</b> across <b>${F.cats.size} categories</b>, free and open source, with direct download links.`;
+      : `Discover useful open-source software, all in one place — <b>${ALL.length.toLocaleString()} apps</b> across <b>${F.cats.size} categories</b>.`;
   }
 
   function refresh(reset) {
@@ -616,6 +638,17 @@
     if (e.target.closest("#drawer-x")) { closeDrawer(); return; }
     if (e.target === scrim) { closeDrawer(); return; }
 
+    const more = e.target.closest("#tile-more");
+    if (more) {
+      if (window.innerWidth <= 860) {
+        $("#menu").click();
+      } else {
+        const catH = $("#f-cats");
+        if (catH) catH.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+      return;
+    }
+
     const cat = e.target.closest("[data-cat]");
     if (cat) {
       const v = cat.dataset.cat;
@@ -800,7 +833,37 @@
       .sort((a, b) => b.date.localeCompare(a.date));
   }
 
+  // ---------------------------------------------------------- theme
+  function initTheme() {
+    let saved = null;
+    try { saved = localStorage.getItem("sourceshelf.theme"); } catch (e) {}
+    const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const currentTheme = saved || (prefersDark ? "dark" : "light");
+    document.documentElement.setAttribute("data-theme", currentTheme);
+
+    const toggle = $("#theme-toggle");
+    if (toggle) {
+      toggle.addEventListener("click", () => {
+        const cur = document.documentElement.getAttribute("data-theme") || "dark";
+        const next = cur === "dark" ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", next);
+        try { localStorage.setItem("sourceshelf.theme", next); } catch (e) {}
+      });
+    }
+
+    try {
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (e) => {
+        let explicit = null;
+        try { explicit = localStorage.getItem("sourceshelf.theme"); } catch (err) {}
+        if (!explicit) {
+          document.documentElement.setAttribute("data-theme", e.matches ? "dark" : "light");
+        }
+      });
+    } catch (e) {}
+  }
+
   // ---------------------------------------------------------- boot
+  initTheme();
   // header badge + nav wiring
   const badge = $("#nav-badge");
   const totalNew = arrivalsTotal();
