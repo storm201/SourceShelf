@@ -113,12 +113,17 @@ jobs:
         run: |
           git config user.name  "sourceshelf-bot"
           git config user.email "bot@users.noreply.github.com"
-          git add data dist 2>/dev/null || git add data
+          # Stage ALL generated output (data/, dist/, any stray crawl artefacts).
+          # Using -A ensures the working tree is clean before we attempt a rebase.
+          git add -A
           if git diff --cached --quiet; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "No changes today."
           else
             git commit -m "chore(data): refresh catalog $(date -u +%Y-%m-%d) [+${{ steps.build.outputs.new_today }} new]"
+            # Rebase on top of any commits that landed on origin/main while we
+            # were running (the working tree is clean at this point, so rebase
+            # will never fail with "unstaged changes").
             git pull --rebase origin main
             git push origin main
             echo "changed=true" >> "$GITHUB_OUTPUT"
