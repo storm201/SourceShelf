@@ -308,10 +308,26 @@ Two ways, in order of preference:
 Pin the famous ones. Keyword scoring handles the long tail, but a curated
 `OVERRIDES` entry is free accuracy.
 
+## Direct Downloads vs. "Get app"
+
+When browsing SourceShelf, every app card has a primary action button:
+
+- **`Download` (Direct Download)**: Triggered when the crawler resolves a pre-compiled binary installer (`.exe`, `.msi`, `.dmg`, `.pkg`, `.deb`, `.rpm`, `.AppImage`, `.apk`) attached to the repository's latest GitHub Release. The site detects your operating system (`Windows`, `macOS`, `Linux`, `Android`) and links directly to the asset's GitHub download URL. Clicking it starts an immediate file download from GitHub's CDN to your browser.
+- **`Get app` (Releases / Instructions)**: Appears when no pre-compiled installer matching an OS could be resolved. This happens for three reasons:
+  1. **Self-Hosted, Web, or Docker apps**: Many open-source projects (e.g. `n8n`, `dify`, `open-webui`, `supabase`) are deployed via Docker, `npm`, or `pip` rather than installed as standalone desktop applications. No `.exe` or `.dmg` binaries exist on GitHub Releases.
+  2. **Source-only releases**: The repository only provides GitHub's automated source code archives (`.zip` / `.tar.gz`), which require compiling or running from source.
+  3. **Release crawler quota**: The nightly workflow inspects releases for the top `--releases 900` repositories to stay well within GitHub API rate limits. Repositories outside that cutoff fall back to **Get app** until resolved.
+
+### Maximizing Direct Downloads
+
+To maximize direct download coverage across the entire catalog:
+- Run the crawler with `--releases 2000` (or trigger the GitHub Actions workflow with `releases: 2000` or `resync_all: true`).
+- For any repository that publishes pre-compiled installer assets on GitHub Releases, SourceShelf will automatically detect them and convert the button from **Get app** to a direct **Download**.
+
 ## Notes & limits
 
 - GitHub allows 5,000 authenticated API calls/hour. A full crawl uses ~70 search
-  calls + one release call per repo you resolve — `--releases 800` fits comfortably.
+  calls + one release call per repo you resolve — `--releases 800` to `900` fits comfortably.
 - Repos whose developers publish installers elsewhere (e.g. their own website) will
   show **Get app**, which opens the Releases page. If there's no release at all,
   the detail panel explains the project is source/self-hosted only.
