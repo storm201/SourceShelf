@@ -1,5 +1,7 @@
 # secrets — never commit
 .env
+.env.*
+!.env.example
 .env.local
 
 # local caches (regenerated every run)

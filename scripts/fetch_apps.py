@@ -303,6 +303,19 @@ OS_PATTERNS = [
 ]
 
 
+def is_safe_download_url(url: str, full_repo: str) -> bool:
+    """Strict validation: ensure download link is an HTTPS URL from github.com for this repo."""
+    if not url or not isinstance(url, str):
+        return False
+    try:
+        p = urllib.parse.urlparse(url)
+        return (p.scheme == "https" and
+                p.netloc == "github.com" and
+                p.path.startswith(f"/{full_repo}/releases/download/"))
+    except Exception:
+        return False
+
+
 # Remaining API-call budget shared by the release workers. None = unlimited.
 BUDGET: dict[str, int | None] = {"left": None}
 WEB_NONE: set[str] = set()
@@ -373,10 +386,13 @@ def web_release_status(full: str) -> tuple[str, dict | None]:
         block = frag[m.end():end]
         sz = re.search(r">\s*([\d.]+)\s*(BYTES|KB|MB|GB)\s*<", block, re.I)
         size = int(float(sz.group(1)) * _SIZE_UNITS[sz.group(2).upper()]) if sz else 0
+        asset_url = "https://github.com" + path
+        if not is_safe_download_url(asset_url, full):
+            continue
         assets.append({
             "name": name,
             "size": size,
-            "url": "https://github.com" + path,
+            "url": asset_url,
             "downloads": 0,
             "os": [o for o, rx in OS_PATTERNS if rx.search(name)],
         })
@@ -437,11 +453,14 @@ def latest_release(full: str) -> dict | None:
         nm = a.get("name") or ""
         if JUNK_RX.search(nm) or not INSTALLER_RX.search(nm):
             continue
+        url = a.get("browser_download_url") or ""
+        if not is_safe_download_url(url, full):
+            continue
         oses = [o for o, rx in OS_PATTERNS if rx.search(nm)]
         assets.append({
             "name": nm,
             "size": a.get("size") or 0,
-            "url": a.get("browser_download_url"),
+            "url": url,
             "downloads": a.get("download_count") or 0,
             "os": oses,
         })

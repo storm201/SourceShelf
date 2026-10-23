@@ -34,6 +34,22 @@ ROOT = Path(__file__).resolve().parent.parent
 DIST = ROOT / "dist"
 
 
+def parse_jwt_role(token: str) -> str | None:
+    """Decode JWT payload to inspect the role claim without verifying signature."""
+    if not token or not isinstance(token, str):
+        return None
+    parts = token.split(".")
+    if len(parts) < 2:
+        return None
+    try:
+        import base64
+        padded = parts[1] + "=" * (-len(parts[1]) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(padded.encode()).decode("utf-8", "replace"))
+        return payload.get("role")
+    except Exception:
+        return None
+
+
 # --------------------------------------------------------------------- config
 def supabase_client_config() -> dict | None:
     # Load .env here too: build_single.py is normally run as a *child* process
@@ -58,6 +74,15 @@ def supabase_client_config() -> dict | None:
            or os.environ.get("NEXT_PUBLIC_SUPABASE_ANON_KEY") or "").strip()
     if not url or not key:
         return None
+
+    # Hard-fail if a service_role key was mistakenly passed
+    role = parse_jwt_role(key)
+    if role and role != "anon":
+        raise RuntimeError(
+            f"CRITICAL SECURITY ERROR: SUPABASE_ANON_KEY has role {role!r} "
+            f"(must be 'anon'). A service_role key must NEVER be embedded into public HTML/JS!"
+        )
+
     return {"url": url, "anonKey": key}
 
 
@@ -144,7 +169,49 @@ def build_html() -> tuple[str, dict]:
     return html, meta
 
 
+def check_build_secrets(targets: list[Path] | None = None) -> bool:
+    """Verify built artifacts contain no service_role keys or non-anon JWTs."""
+    import re
+    if targets is None:
+        targets = [ROOT / "sourceshelf.html"]
+        if DIST.exists():
+            targets.append(DIST)
+    jwt_rx = re.compile(r'eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+')
+    violations = []
+    for target in targets:
+        if not target.exists():
+            continue
+        files = [target] if target.is_file() else [p for p in target.rglob("*") if p.is_file()]
+        for f in files:
+            if f.suffix in (".png", ".jpg", ".ico", ".nojekyll", ".xml"):
+                continue
+            text = f.read_text(encoding="utf-8", errors="ignore")
+            # 1. Plaintext service_role detection in web-shipped files
+            if "service_role" in text and f.suffix in (".html", ".js", ".json"):
+                violations.append(f"{f.name}: contains literal 'service_role'")
+            # 2. JWT role check
+            for token in jwt_rx.findall(text):
+                role = parse_jwt_role(token)
+                if role and role != "anon":
+                    violations.append(f"{f.name}: JWT has forbidden role {role!r}")
+    if violations:
+        import sys
+        print("\n::error::POST-BUILD SECURITY CHECK FAILED:", file=sys.stderr)
+        for v in violations:
+            print(f"  ✗ {v}", file=sys.stderr)
+        return False
+    print("✓ Post-build security scan passed: zero service_role or non-anon keys detected.")
+    return True
+
+
 def main() -> int:
+    import sys
+    if "--check-secrets" in sys.argv:
+        targets = [ROOT / "sourceshelf.html"]
+        if DIST.exists():
+            targets.append(DIST)
+        return 0 if check_build_secrets(targets) else 1
+
     cfg = supabase_client_config()
     write_config(cfg)
 
@@ -183,6 +250,11 @@ def main() -> int:
     n_new = meta.get("newToday") or 0
     print(f"new today: {n_new} · history: {meta.get('historySource', 'none')}"
           + ("" if meta.get("baseline", True) else " (baseline run)"))
+
+    # ---- post-build secret validation
+    if not check_build_secrets([out, DIST]):
+        return 1
+
     return 0
 
 

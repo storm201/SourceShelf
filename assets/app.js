@@ -82,6 +82,16 @@
   const $ = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const safeUrl = (u) => {
+    if (!u) return "#";
+    try {
+      const p = new URL(u, window.location.origin);
+      if (p.protocol === "https:" || (p.protocol === "http:" && (p.hostname === "localhost" || p.hostname === "127.0.0.1"))) {
+        return esc(u);
+      }
+    } catch (e) {}
+    return "#";
+  };
   const fmtN = (n) => n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, "") + "k" : String(n);
   const fmtSize = (b) => !b ? "" : b > 1048576 ? (b / 1048576).toFixed(b > 10485760 ? 0 : 1) + " MB" : Math.max(1, Math.round(b / 1024)) + " KB";
 
@@ -138,7 +148,7 @@
   }
 
   function nsCard(a) {
-    return `<a class="ns-card" href="${esc(a.url)}" target="_blank" rel="noopener" title="${esc(a.id)}">
+    return `<a class="ns-card" href="${safeUrl(a.url)}" target="_blank" rel="noopener noreferrer" title="${esc(a.id)}">
       <div class="ns-body">
         <span class="ns-name">${esc(a.name)}</span>
         <span class="ns-meta">★ ${fmtN(a.stars)} · ${esc(a.category)}</span>
@@ -337,13 +347,13 @@
     const over = (a.platforms || []).length - 4;
     const dl = a._dl;
     const btn = dl
-      ? `<a class="btn primary" href="${esc(bestAsset(a).url)}" target="_blank" rel="noopener" title="Download ${esc(bestAsset(a).name)}">${I.dl} Download<span class="n">${fmtSize(bestAsset(a).size)}</span></a>`
-      : `<a class="btn primary" href="${esc(a.url)}/releases" target="_blank" rel="noopener" title="Open the releases page">${I.dl} Get app</a>`;
+      ? `<a class="btn primary" href="${safeUrl(bestAsset(a).url)}" target="_blank" rel="noopener noreferrer" title="Download ${esc(bestAsset(a).name)} · Hosted on GitHub">${I.dl} Download<span class="n">${fmtSize(bestAsset(a).size)}</span></a>`
+      : `<a class="btn primary" href="${safeUrl(a.url + '/releases')}" target="_blank" rel="noopener noreferrer" title="Open releases page on GitHub">${I.dl} Get app</a>`;
     return `<article class="card" data-id="${esc(a.id)}" tabindex="0">
       <div class="card-h">
-        <div class="card-logo" aria-hidden="true"><span>${esc((a.name[0] || "?").toUpperCase())}</span><img src="${esc(a.avatar)}" alt="" loading="lazy" decoding="async" onerror="this.remove()"></div>
+        <div class="card-logo" aria-hidden="true"><span>${esc((a.name[0] || "?").toUpperCase())}</span><img src="${safeUrl(a.avatar)}" alt="" loading="lazy" decoding="async" onerror="this.remove()"></div>
         <div class="card-t">
-          <a class="card-name" href="${esc(a.url)}" target="_blank" rel="noopener" data-stop="1" title="${esc(a.owner + "/" + a.name)}">${esc(a.name)}</a>
+          <a class="card-name" href="${safeUrl(a.url)}" target="_blank" rel="noopener noreferrer" data-stop="1" title="${esc(a.owner + "/" + a.name)}">${esc(a.name)}</a>
           <div class="card-owner">${esc(a.owner)}</div>
         </div>
         <span class="card-stars">${I.star}${fmtN(a.stars)}</span>
@@ -358,7 +368,7 @@
       </div>
       <div class="card-f">
         ${btn}
-        <a class="btn gh" href="${esc(a.url)}" target="_blank" rel="noopener" data-stop="1" aria-label="GitHub repository">${I.gh}</a>
+        <a class="btn gh" href="${safeUrl(a.url)}" target="_blank" rel="noopener noreferrer" data-stop="1" aria-label="GitHub repository">${I.gh}</a>
         <button class="btn gh" data-detail="${esc(a.id)}" aria-label="Details">⋯</button>
       </div>
     </article>`;
@@ -534,11 +544,12 @@
     const assets = (a.release && a.release.assets) || [];
     const dlBlock = assets.length ? `
       <div class="dsec"><h4>Direct downloads · ${esc(a.release.tag || "")}</h4>
-        ${assets.slice(0, 14).map((x) => `<a class="asset" href="${esc(x.url)}" target="_blank" rel="noopener">
+        <div class="dl-trust-note">Downloads are hosted by each project on GitHub. Verify the source and checksum before running.</div>
+        ${assets.slice(0, 14).map((x) => `<a class="asset" href="${safeUrl(x.url)}" target="_blank" rel="noopener noreferrer">
             <span class="an">${esc(x.name)}</span>
             <span class="as">${fmtSize(x.size)}</span>
           </a>`).join("")}
-        ${a.release.page ? `<a class="asset" href="${esc(a.release.page)}" target="_blank" rel="noopener"><span class="an" style="font-family:var(--sans)">All releases &amp; checksums</span>${I.ext}</a>` : ""}
+        ${a.release.page ? `<a class="asset" href="${safeUrl(a.release.page)}" target="_blank" rel="noopener noreferrer"><span class="an" style="font-family:var(--sans)">All releases &amp; checksums</span>${I.ext}</a>` : ""}
       </div>` : `
       <div class="dsec"><h4>Downloads</h4>
         <div class="note">No pre-built binaries published in a GitHub release for this project — it may be installed from source, via a package manager, or self-hosted with Docker. Check the repository for the official install steps.</div>
@@ -549,7 +560,7 @@
       <div class="dsec"><div class="stat-row">
         <div class="stat"><b>${fmtN(a.stars)}</b><span>Stars</span></div>
         <div class="stat"><b>${fmtN(a.forks)}</b><span>Forks</span></div>
-        <div class="stat"><b>${a.license || "—"}</b><span>License</span></div>
+        <div class="stat"><b>${esc(a.license || "—")}</b><span>License</span></div>
       </div></div>
       <div class="dsec"><div style="display:flex;gap:7px;flex-wrap:wrap">
         <span class="tag cat">${esc(a.category)}</span>
@@ -557,8 +568,8 @@
       </div></div>
       ${dlBlock}
       <div class="dsec"><h4>Repository</h4>
-        <a class="btn wide" href="${esc(a.url)}" target="_blank" rel="noopener">${I.gh} ${esc(a.id)}</a>
-        ${a.homepage ? `<a class="btn wide" style="margin-top:6px" href="${esc(a.homepage)}" target="_blank" rel="noopener">${I.ext} Official website</a>` : ""}
+        <a class="btn wide" href="${safeUrl(a.url)}" target="_blank" rel="noopener noreferrer">${I.gh} ${esc(a.id)}</a>
+        ${a.homepage ? `<a class="btn wide" style="margin-top:6px" href="${safeUrl(a.homepage)}" target="_blank" rel="noopener noreferrer">${I.ext} Official website</a>` : ""}
       </div>
       <div class="dsec"><h4>Activity</h4>
         <div class="note">Last push ${esc(a.pushedAt || "unknown")} · created ${esc(a.createdAt || "unknown")}${a.language ? ` · primary language ${esc(a.language)}` : ""}</div>
@@ -566,7 +577,7 @@
       ${(a.topics || []).length ? `<div class="dsec"><h4>Topics</h4><div style="display:flex;gap:5px;flex-wrap:wrap">${a.topics.map((t) => `<button class="tag" data-topic="${esc(t)}">${esc(t)}</button>`).join("")}</div></div>` : ""}
     `;
     $("#drawer-head").innerHTML = `
-      <div class="drawer-logo" aria-hidden="true"><span>${esc((a.name[0] || "?").toUpperCase())}</span><img src="${esc(a.avatar)}" alt="" onerror="this.remove()"></div>
+      <div class="drawer-logo" aria-hidden="true"><span>${esc((a.name[0] || "?").toUpperCase())}</span><img src="${safeUrl(a.avatar)}" alt="" onerror="this.remove()"></div>
       <div style="min-width:0">
         <div class="card-name" style="font-size:15px">${esc(a.name)}</div>
         <div class="card-owner">${esc(a.owner)}</div>
