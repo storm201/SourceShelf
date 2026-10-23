@@ -748,9 +748,12 @@
     }
     setSource("pending", "connecting…", "Contacting Supabase…");
     const since = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+    // ponytail: query arrivals newer than baseline date, or in the last 7 days
+    const filterDate = (META.baselineDate && META.baselineDate >= since) ? META.baselineDate : since;
+    const dateOp = (META.baselineDate && filterDate === META.baselineDate) ? "gt." : "gte.";
     const url = CFG.url.replace(/\/$/, "") + "/rest/v1/apps" +
       "?select=id,name,owner,stars,category,description,platforms,license,first_seen,url" +
-      "&first_seen=gte." + encodeURIComponent(since) +
+      "&first_seen=" + dateOp + encodeURIComponent(filterDate) +
       "&order=first_seen.desc,stars.desc&limit=" + LIVE_LIMIT;
     try {
       const r = await fetch(url, {
@@ -771,32 +774,17 @@
         "Reading " + CFG.url + " — the JSON snapshot is only a fallback.");
       document.body.dataset.live = "1";
 
-      // Total rows in the window, from "0-299/1619". Not the page size.
       LIVE_TOTAL = rows.length;
       const cr = r.headers.get("content-range") || "";
       const m = /\/(\d+)$/.exec(cr);
       if (m) LIVE_TOTAL = parseInt(m[1], 10);
 
-      // A seeding run records discovery dates but claims nothing is new, and
-      // every row in the database carries today's date. Building an arrivals
-      // strip from that would announce the whole catalogue as "added today".
-      if (SEED_RUN) {
-        ARRIVALS = [];
-        renderStrip();
-        renderNewView();
-        const badge = $("#nav-badge");
-        if (badge) { badge.textContent = ""; badge.hidden = true; }
-        return;
-      }
-
-      if (!rows.length) return;
-      mergeLive(rows);
+      if (rows.length) mergeLive(rows);
       renderStrip();
       renderNewView();
       const badge = $("#nav-badge");
-      // the true window total, not the number of rows we chose to render
-      const n = Math.max(LIVE_TOTAL, arrivalsTotal());
-      if (badge && n) { badge.textContent = n; badge.hidden = false; }
+      const n = arrivalsTotal();
+      if (badge) { badge.textContent = n || ""; badge.hidden = !n; }
     } catch (e) {
       // The baked dataset is already on screen, so this is never fatal —
       // but say so plainly rather than pretending we're live.
@@ -812,6 +800,8 @@
     for (const r of rows) {
       const day = String(r.first_seen || "").slice(0, 10);
       if (!day) continue;
+      // ponytail: baseline cohort is the pre-existing catalog, not new arrivals
+      if (META.baselineDate && day === META.baselineDate) continue;
       const existing = BY_ID.get(r.id);
       if (existing) {                       // fresher star count
         existing.stars = r.stars;

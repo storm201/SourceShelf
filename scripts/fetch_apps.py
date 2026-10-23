@@ -525,7 +525,14 @@ def main() -> int:
           f"| min_stars={min_stars}", flush=True)
 
     # ---------------------------------------------------------- 1. search
-    queries = QUERIES[: args.queries] if args.queries else QUERIES
+    queries = list(QUERIES[: args.queries] if args.queries else QUERIES)
+    if not args.queries:
+        # ponytail: dynamic discovery queries for actively pushed apps so crawls catch new arrivals
+        recent_pushed = (datetime.now(timezone.utc).date() - timedelta(days=60)).isoformat()
+        discovery_topics = ("self-hosted", "ai", "cli", "desktop-app", "developer-tools",
+                            "productivity", "privacy", "foss", "open-source")
+        queries += [f"topic:{t} pushed:>{recent_pushed} stars:>={min_stars}"
+                    for t in discovery_topics]
     raw: dict[str, dict] = {}
     search_ok = search_failed = 0
     retry_later: list[str] = []
