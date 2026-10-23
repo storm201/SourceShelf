@@ -809,6 +809,16 @@ button.tag:hover { color: var(--text); border-color: var(--dim); }
 .asset .as { color: var(--dim); font-size: 10.5px; font-family: var(--mono); flex-shrink: 0; }
 
 .note { font-size: 12px; color: var(--dim); line-height: 1.7; }
+.dl-trust-note {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted);
+  margin-bottom: 10px;
+  padding: 7px 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
 
 .btn.wide { display: flex; width: 100%; justify-content: flex-start; gap: 8px; margin-top: 6px; }
 
