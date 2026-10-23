@@ -54,7 +54,8 @@ create index if not exists apps_newest_idx     on public.apps (first_seen desc, 
 
 -- ------------------------------------------------------------ handy view
 -- Everything discovered in the last 7 days, newest first.
-create or replace view public.new_arrivals as
+create or replace view public.new_arrivals
+  with (security_invoker = true) as
   select id, name, owner, url, description, stars, category, platforms,
          license, release, first_seen
   from public.apps
@@ -83,10 +84,10 @@ drop policy if exists "runs are publicly readable" on public.runs;
 create policy "runs are publicly readable"
   on public.runs for select to anon, authenticated using (true);
 
--- Belt and braces: anon can read, never write. (service_role bypasses RLS,
--- so the crawler still works.)
-revoke insert, update, delete on public.apps from anon, authenticated;
-revoke insert, update, delete on public.runs from anon, authenticated;
+-- Belt and braces: anon and authenticated can only read, never write, truncate, or alter.
+-- (service_role bypasses RLS, so the crawler still works.)
+revoke all on public.apps from anon, authenticated;
+revoke all on public.runs from anon, authenticated;
 grant  select on public.apps to anon, authenticated;
 grant  select on public.runs to anon, authenticated;
 grant  select on public.new_arrivals to anon, authenticated;
