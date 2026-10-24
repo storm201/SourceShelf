@@ -585,6 +585,22 @@ OVERRIDES = {
     "continuedev/continue": ("AI & LLM", ["VS Code"]),
 }
 
+# ------------------------------------------------ community overrides
+# Dynamically load community additions from data/community_apps.json
+try:
+    import json
+    from pathlib import Path
+    _comm_file = Path(__file__).resolve().parent.parent / "data" / "community_apps.json"
+    if _comm_file.exists():
+        _comm_data = json.loads(_comm_file.read_text(encoding="utf-8"))
+        for _repo, _spec in _comm_data.items():
+            if isinstance(_spec, dict):
+                OVERRIDES[_repo] = (_spec.get("category", "Other"), _spec.get("platforms", []))
+            elif isinstance(_spec, (list, tuple)) and len(_spec) == 2:
+                OVERRIDES[_repo] = (_spec[0], _spec[1])
+except Exception:
+    pass
+
 # ------------------------------------------------------- discovery queries
 # Each search caps at per_page=100. Categories here are only a fallback hint;
 # the classifier usually decides. Keep stars thresholds sane (>=500).
