@@ -153,6 +153,19 @@ def check_build() -> None:
         except Exception as e:
             record(FAIL, "new-arrivals.json", str(e))
 
+    readme = ROOT / "README.md"
+    apps_json = ROOT / "data" / "apps.json"
+    if readme.exists() and apps_json.exists():
+        try:
+            m = json.loads(apps_json.read_text(encoding="utf-8")).get("meta", {})
+            expected = f"{m.get('count', 0):,} apps"
+            readme_text = readme.read_text(encoding="utf-8")
+            record(PASS if expected in readme_text else WARN,
+                   "README catalog count synced",
+                   f"found {expected}" if expected in readme_text else f"expected {expected}")
+        except Exception as e:
+            record(WARN, "README catalog check", str(e))
+
 
 def check_supabase() -> None:
     section("4. Supabase")

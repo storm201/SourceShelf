@@ -144,6 +144,73 @@ def write_feed(payload: dict) -> Path | None:
     return out
 
 
+# ------------------------------------------------------------------ readme
+def update_readme(meta: dict, readme_path: Path | None = None) -> bool:
+    """Keep README.md catalog statistics and badges automatically updated."""
+    target = readme_path or (ROOT / "README.md")
+    if not target.exists():
+        return False
+
+    count = meta.get("count", 0)
+    cats = len(meta.get("categories", []))
+    plats = len(meta.get("platforms", []))
+    downloads = meta.get("withDownloads", 0)
+
+    count_fmt = f"{count:,}"
+    downloads_fmt = f"{downloads:,}"
+    count_badge = count_fmt.replace(",", "%2C")
+    downloads_badge = downloads_fmt.replace(",", "%2C")
+
+    badges = (
+        f"[![Catalog Size](https://img.shields.io/badge/catalog-{count_badge}%20apps-blue?style=flat-square&logo=github)](data/apps.json)\n"
+        f"[![Categories](https://img.shields.io/badge/categories-{cats}-purple?style=flat-square)](scripts/taxonomy.py)\n"
+        f"[![Platforms](https://img.shields.io/badge/platforms-{plats}-success?style=flat-square)](scripts/taxonomy.py)\n"
+        f"[![Direct Downloads](https://img.shields.io/badge/direct%20downloads-{downloads_badge}-orange?style=flat-square)](#direct-downloads-vs-get-app)"
+    )
+
+    stats_quote = (
+        f"> **Current catalog: {count_fmt} apps · {cats} categories · {plats} platforms · {downloads_fmt} with direct\n"
+        f"> download links**, crawled live from the GitHub API."
+    )
+
+    replacement_block = (
+        f"<!-- CATALOG_STATS_START -->\n"
+        f"{badges}\n\n"
+        f"{stats_quote}\n"
+        f"<!-- CATALOG_STATS_END -->"
+    )
+
+    text = target.read_text(encoding="utf-8")
+
+    marker_rx = re.compile(
+        r"<!-- CATALOG_STATS_START -->.*?<!-- CATALOG_STATS_END -->",
+        re.DOTALL
+    )
+    if marker_rx.search(text):
+        new_text = marker_rx.sub(replacement_block, text)
+    else:
+        old_quote_rx = re.compile(
+            r">\s*\*\*Current catalog:\s*[0-9,]+\s*apps.*?crawled live from the GitHub API\.",
+            re.DOTALL
+        )
+        if old_quote_rx.search(text):
+            new_text = old_quote_rx.sub(replacement_block, text)
+        else:
+            return False
+
+    # Also sync the seeding explanation if present
+    new_text = re.sub(
+        r'Otherwise day one would announce\s*"[0-9,]+ new apps today"',
+        f'Otherwise day one would announce "{count_fmt} new apps today"',
+        new_text
+    )
+
+    if new_text != text:
+        target.write_text(new_text, encoding="utf-8")
+        return True
+    return False
+
+
 # -------------------------------------------------------------------- html
 def build_html() -> tuple[str, dict]:
     html = (ROOT / "index.html").read_text(encoding="utf-8")
@@ -237,6 +304,7 @@ def main() -> int:
 
     arrivals = write_new_arrivals_json(payload)
     feed = write_feed(payload)
+    readme_updated = update_readme(meta)
 
     # ---- report
     print(f"wrote {out.name}  ({kb:.0f} KB, {meta.get('count')} apps, "
@@ -246,6 +314,8 @@ def main() -> int:
           f"({sum(len(d['apps']) for d in (meta.get('newArrivals') or []))} arrivals)")
     if feed:
         print(f"wrote {feed.relative_to(ROOT)}")
+    if readme_updated:
+        print(f"updated README.md  ({meta.get('count'):,} apps, {meta.get('withDownloads', 0):,} downloads)")
     print(f"supabase config: {'injected (' + cfg['url'] + ')' if cfg else 'none (static only)'}")
     n_new = meta.get("newToday") or 0
     print(f"new today: {n_new} · history: {meta.get('historySource', 'none')}"
