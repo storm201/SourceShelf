@@ -164,7 +164,7 @@
     if (!g && !total) { strip.hidden = true; return; }
     strip.hidden = false;
     const show = g || ARRIVALS[0];
-    $("#newstrip-t").textContent = g ? "Added today" : "New this week";
+    $("#newstrip-t").textContent = g ? "Added today" : (dayLabel(show.date) === "Yesterday" ? "Added yesterday" : "New this week");
     $("#ns-count").textContent = "+" + show.count;
     rail.innerHTML = (show.apps || []).slice(0, 12).map(nsCard).join("");
     $("#ns-more").textContent = total > show.count
@@ -790,7 +790,17 @@
       const m = /\/(\d+)$/.exec(cr);
       if (m) LIVE_TOTAL = parseInt(m[1], 10);
 
-      if (rows.length) mergeLive(rows);
+      if (rows.length) {
+        const added = mergeLive(rows);
+        if (added) {
+          const newF = facets();
+          F.cats = newF.cats; F.plats = newF.plats; F.lics = newF.lics;
+          buildSidebar();
+          buildTiles();
+        }
+        apply();
+        render();
+      }
       renderStrip();
       renderNewView();
       const badge = $("#nav-badge");
@@ -807,6 +817,7 @@
   }
 
   function mergeLive(rows) {
+    let added = false;
     const byDay = new Map(ARRIVALS.map((g) => [g.date, g]));
     for (const r of rows) {
       const day = String(r.first_seen || "").slice(0, 10);
@@ -817,6 +828,22 @@
       if (existing) {                       // fresher star count
         existing.stars = r.stars;
         existing._trend = existing.stars / Math.max(existing.ageDays || 365, 60);
+      } else {
+        // ponytail: ingest fresh app into main catalog
+        const a = {
+          id: r.id, name: r.name, owner: r.owner, url: r.url || ("https://github.com/" + r.id),
+          homepage: null, description: r.description || "", stars: r.stars, forks: 0,
+          language: null, license: r.license, topics: [], category: r.category || "Other",
+          platforms: r.platforms || [], createdAt: "", pushedAt: "", ageDays: 0,
+          archived: false, release: null, firstSeen: day, isNew: true, starsDelta: 0,
+          avatar: "https://github.com/" + r.owner + ".png?size=96",
+          _dl: null, _trend: r.stars / 60, _delta: 0,
+        };
+        a._s = (a.name + " " + a.owner + " " + a.description + " " + (a.topics || []).join(" ") +
+          " " + a.category + " " + (a.platforms || []).join(" ") + " " + (a.license || "")).toLowerCase();
+        ALL.unshift(a);
+        BY_ID.set(a.id, a);
+        added = true;
       }
       let g = byDay.get(day);
       if (!g) { g = { date: day, count: 0, apps: [] }; byDay.set(day, g); }
@@ -832,6 +859,7 @@
     ARRIVALS = [...byDay.values()]
       .map((g) => ({ ...g, count: g.apps.length, apps: g.apps.sort((a, b) => b.stars - a.stars) }))
       .sort((a, b) => b.date.localeCompare(a.date));
+    return added;
   }
 
   // ---------------------------------------------------------- theme

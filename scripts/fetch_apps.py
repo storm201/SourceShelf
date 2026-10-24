@@ -498,7 +498,7 @@ def build_new_arrivals(apps: list[dict], days: int = 7,
                 "category": x["category"], "platforms": x["platforms"],
                 "license": x["license"], "url": x["url"],
                 "hasDownload": bool(x.get("release") and x["release"].get("assets")),
-            } for x in rows[:60]],
+            } for x in rows],
         })
     return out
 
