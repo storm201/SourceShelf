@@ -620,10 +620,21 @@ def main() -> int:
               f"are carried over below so the catalog does not shrink.",
               flush=True)
 
+    # ------------------------------------------------- 1b. curated overrides
+    # Guarantee that any repo explicitly added to OVERRIDES is fetched directly,
+    # even if it wasn't returned in the general GitHub search queries.
+    missing_overrides = [k for k in OVERRIDES if "/" in k and k not in raw and k.lower() not in raw]
+    if missing_overrides:
+        for ov in missing_overrides:
+            r_info = gh(f"/repos/{ov}")
+            if r_info and "full_name" in r_info:
+                raw[r_info["full_name"]] = r_info
+
     # ------------------------------------------------- 2. filter & classify
     apps: list[dict] = []
     for fn, r in raw.items():
-        if (r.get("stargazers_count") or 0) < min_stars:
+        is_override = fn in OVERRIDES or fn.lower() in OVERRIDES
+        if (r.get("stargazers_count") or 0) < min_stars and not is_override:
             continue
         if not is_app(r):
             continue

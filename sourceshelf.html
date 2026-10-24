@@ -194,6 +194,17 @@ input, select { font: inherit; color: inherit; }
 .navbtn:hover { color: var(--text); background: var(--panel-2); }
 .navbtn:active { transform: scale(0.97); }
 .navbtn.on { color: var(--accent-text); background: var(--accent); font-weight: 600; }
+.navbtn-suggest {
+  color: var(--accent);
+  background: var(--accent-surface);
+  border: 1px dashed var(--accent-border);
+  font-weight: 500;
+}
+.navbtn-suggest:hover {
+  background: var(--accent);
+  color: var(--accent-text);
+  border-style: solid;
+}
 .navbadge {
   font-family: var(--mono); font-size: 10px;
   border-radius: var(--radius-pill); padding: 0 6px; line-height: 16px;
@@ -874,6 +885,192 @@ button.tag:hover { color: var(--text); border-color: var(--dim); }
 }
 .foot b { color: var(--muted); }
 
+/* ============================================================ modal dialog */
+
+.modal {
+  position: fixed; inset: 0; z-index: 99;
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px;
+  pointer-events: none; opacity: 0;
+  transition: opacity var(--dur-base) var(--ease-out);
+}
+.modal.on {
+  pointer-events: auto; opacity: 1;
+}
+.modal-card {
+  width: 100%; max-width: 520px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--line-soft);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  transform: scale(0.96) translateY(8px);
+  transition: transform var(--dur-base) var(--ease-drawer);
+}
+.modal.on .modal-card {
+  transform: none;
+}
+.modal-h {
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--line);
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+}
+.modal-title {
+  margin: 0; font-size: 16px; font-weight: 700; color: var(--text);
+}
+.modal-sub {
+  margin: 4px 0 0; font-size: 12.5px; color: var(--muted);
+}
+.modal-close {
+  width: 28px; height: 28px; flex-shrink: 0;
+  display: grid; place-items: center;
+  border-radius: 7px; color: var(--muted);
+  border: 1px solid var(--line); font-size: 18px; line-height: 1;
+  transition: color var(--dur-fast), background var(--dur-fast);
+}
+.modal-close:hover {
+  color: var(--text); background: var(--panel-2);
+}
+.modal-b {
+  padding: 18px 20px;
+  display: flex; flex-direction: column; gap: 14px;
+  max-height: 70vh; overflow-y: auto;
+}
+.field {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.field label {
+  font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em;
+}
+.input-wrap {
+  position: relative; display: flex; align-items: center;
+}
+.input-wrap input {
+  width: 100%; height: 38px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 0 12px;
+  color: var(--text); font-size: 13.5px;
+  transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+}
+.input-wrap input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-surface);
+}
+.input-spinner {
+  position: absolute; right: 12px;
+  width: 16px; height: 16px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: modal-spin 0.7s linear infinite;
+}
+@keyframes modal-spin {
+  to { transform: rotate(360deg); }
+}
+.field-hint {
+  font-size: 11.5px; color: var(--dim);
+}
+.field-hint.error {
+  color: var(--danger);
+}
+.field-hint.success {
+  color: var(--accent);
+}
+.select-full {
+  width: 100%; height: 38px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 0 12px;
+  color: var(--text); font-size: 13.5px;
+}
+.field input[type="text"] {
+  height: 38px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 0 12px;
+  color: var(--text); font-size: 13.5px;
+  transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+}
+.field input[type="text"]:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-surface);
+}
+.suggest-preview-wrap {
+  margin-top: 4px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.preview-label {
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  color: var(--dim); letter-spacing: 0.05em;
+}
+.preview-card {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 12px 14px;
+  background: var(--panel-2);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-sm);
+}
+.preview-avatar {
+  width: 36px; height: 36px; border-radius: 8px;
+  background: var(--bg-soft); border: 1px solid var(--line);
+  object-fit: cover; flex-shrink: 0;
+}
+.preview-info {
+  display: flex; flex-direction: column; min-width: 0; flex: 1;
+}
+.preview-title-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.preview-name {
+  font-size: 13.5px; font-weight: 700; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.preview-stars {
+  font-size: 12px; color: var(--warn); font-family: var(--mono);
+  display: inline-flex; align-items: center; gap: 3px; flex-shrink: 0;
+}
+.preview-desc {
+  margin: 4px 0 0; font-size: 12px; color: var(--muted);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.preview-meta {
+  margin-top: 6px; font-size: 11px; color: var(--dim); display: flex; gap: 12px;
+}
+.modal-f {
+  padding: 14px 20px;
+  border-top: 1px solid var(--line);
+  display: flex; align-items: center; justify-content: flex-end; gap: 10px;
+  background: var(--bg-soft);
+}
+.btn {
+  height: 36px; padding: 0 16px; border-radius: var(--radius-sm);
+  font-size: 13px; font-weight: 600;
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  transition: all var(--dur-fast) var(--ease-out);
+}
+.btn-ghost {
+  color: var(--muted); border: 1px solid var(--line); background: var(--panel);
+}
+.btn-ghost:hover {
+  color: var(--text); background: var(--panel-2);
+}
+.btn-primary {
+  color: var(--accent-text); background: var(--accent); border: 1px solid transparent;
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+.btn:disabled {
+  opacity: 0.45; cursor: not-allowed;
+}
+
 /* ============================================================ responsive */
 
 @media (max-width: 1240px) {
@@ -980,6 +1177,7 @@ button.tag:hover { color: var(--text); border-color: var(--dim); }
     <nav class="top-nav">
       <button class="navbtn" id="nav-all" data-view="all">All apps</button>
       <button class="navbtn" id="nav-new" data-view="new">New arrivals<span class="navbadge" id="nav-badge" hidden>0</span></button>
+      <button class="navbtn navbtn-suggest" id="nav-suggest" type="button" title="Suggest an open-source app to add">+ Suggest App</button>
     </nav>
 
     <div class="top-meta">
@@ -1131,6 +1329,76 @@ button.tag:hover { color: var(--text); border-color: var(--dim); }
   <div class="drawer-b" id="drawer-body"></div>
 </div>
 <div class="scrim" id="scrim-side" style="z-index:94"></div>
+
+<!-- suggest modal -->
+<div class="scrim" id="scrim-suggest" style="z-index:98"></div>
+<div class="modal" id="modal-suggest" role="dialog" aria-modal="true" aria-labelledby="modal-suggest-title" hidden>
+  <div class="modal-card">
+    <div class="modal-h">
+      <div>
+        <h2 id="modal-suggest-title" class="modal-title">Suggest an open-source app</h2>
+        <p class="modal-sub">Paste any GitHub repo to preview and submit it for indexing.</p>
+      </div>
+      <button class="modal-close" id="modal-suggest-close" aria-label="Close dialog">×</button>
+    </div>
+    <div class="modal-b">
+      <div class="field">
+        <label for="suggest-repo">GitHub Repository</label>
+        <div class="input-wrap">
+          <input type="text" id="suggest-repo" placeholder="e.g. zed-industries/zed or https://github.com/..." autocomplete="off" spellcheck="false">
+          <span class="input-spinner" id="suggest-spinner" hidden></span>
+        </div>
+        <span class="field-hint" id="suggest-hint">Enter owner/repo or full GitHub URL</span>
+      </div>
+
+      <div class="field">
+        <label for="suggest-cat">Primary Category</label>
+        <select id="suggest-cat" class="select select-full">
+          <option value="AI & LLM">AI & LLM</option>
+          <option value="Developer Tools">Developer Tools</option>
+          <option value="Privacy & Security">Privacy & Security</option>
+          <option value="Notes & Knowledge">Notes & Knowledge</option>
+          <option value="Productivity">Productivity</option>
+          <option value="Media & Audio">Media & Audio</option>
+          <option value="Video & Streaming">Video & Streaming</option>
+          <option value="Photos & Design">Photos & Design</option>
+          <option value="Files & Sync">Files & Sync</option>
+          <option value="Communication">Communication</option>
+          <option value="Self-Hosting & Homelab">Self-Hosting & Homelab</option>
+          <option value="Automation">Automation</option>
+          <option value="Networking">Networking</option>
+          <option value="System & Utilities">System & Utilities</option>
+          <option value="Reading & Books">Reading & Books</option>
+          <option value="Health & Fitness">Health & Fitness</option>
+          <option value="Finance">Finance</option>
+          <option value="Education">Education</option>
+          <option value="Gaming & Emulation">Gaming & Emulation</option>
+          <option value="Download & Torrent">Download & Torrent</option>
+          <option value="Maps & Travel">Maps & Travel</option>
+          <option value="Monitoring & Dashboards">Monitoring & Dashboards</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="suggest-note">Why should it be added? (optional)</label>
+        <input type="text" id="suggest-note" placeholder="Lightweight, fast, great alternative to..." autocomplete="off">
+      </div>
+
+      <div class="suggest-preview-wrap" id="suggest-preview-wrap" hidden>
+        <span class="preview-label">Live Preview:</span>
+        <div id="suggest-preview"></div>
+      </div>
+    </div>
+    <div class="modal-f">
+      <button class="btn btn-ghost" id="modal-suggest-cancel" type="button">Cancel</button>
+      <button class="btn btn-primary" id="modal-suggest-submit" type="button" disabled>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.2.8-.6v-2c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.1.1 1.7 1.2 1.7 1.2 1 1.7 2.7 1.2 3.4.9.1-.7.4-1.2.7-1.5-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2a11.5 11.5 0 016 0C17.3 4.7 18.3 5 18.3 5c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .4.2.7.8.6 4.6-1.5 7.9-5.8 7.9-10.9C23.5 5.7 18.3.5 12 .5z"/></svg>
+        Submit on GitHub
+      </button>
+    </div>
+  </div>
+</div>
 
 <script>
 /* Runtime configuration, rewritten by scripts/build_single.py.
@@ -2033,8 +2301,210 @@ window.__SUPABASE__ = {"url":"https://hzxiszvzdiswvhvlwgch.supabase.co","anonKey
     } catch (e) {}
   }
 
+  // ---------------------------------------------------------- suggest modal
+  function initSuggestModal() {
+    const modal = $("#modal-suggest");
+    const scrim = $("#scrim-suggest");
+    const openBtn = $("#nav-suggest");
+    const closeBtn = $("#modal-suggest-close");
+    const cancelBtn = $("#modal-suggest-cancel");
+    const submitBtn = $("#modal-suggest-submit");
+    const repoInput = $("#suggest-repo");
+    const catSelect = $("#suggest-cat");
+    const noteInput = $("#suggest-note");
+    const hintEl = $("#suggest-hint");
+    const spinner = $("#suggest-spinner");
+    const previewWrap = $("#suggest-preview-wrap");
+    const previewContainer = $("#suggest-preview");
+
+    if (!modal || !openBtn) return;
+
+    let currentRepoData = null;
+    let debounceTimer = null;
+    let activeFetch = null;
+
+    function openModal() {
+      modal.hidden = false;
+      requestAnimationFrame(() => {
+        modal.classList.add("on");
+        if (scrim) scrim.classList.add("on");
+      });
+      repoInput.focus();
+    }
+
+    function closeModal() {
+      modal.classList.remove("on");
+      if (scrim) scrim.classList.remove("on");
+      setTimeout(() => {
+        modal.hidden = true;
+        resetForm();
+      }, 200);
+    }
+
+    function resetForm() {
+      repoInput.value = "";
+      noteInput.value = "";
+      hintEl.textContent = "Enter owner/repo or full GitHub URL";
+      hintEl.className = "field-hint";
+      spinner.hidden = true;
+      previewWrap.hidden = true;
+      previewContainer.innerHTML = "";
+      submitBtn.disabled = true;
+      currentRepoData = null;
+      if (debounceTimer) clearTimeout(debounceTimer);
+      if (activeFetch) { activeFetch.abort(); activeFetch = null; }
+    }
+
+    function parseRepo(val) {
+      val = (val || "").trim();
+      const m = /(?:https?:\/\/)?(?:www\.)?github\.com\/([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)/i.exec(val);
+      if (m) return `${m[1]}/${m[2].replace(/\.git$/i, "")}`;
+      const m2 = /^([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)$/.exec(val);
+      if (m2) return `${m2[1]}/${m2[2]}`;
+      return null;
+    }
+
+    async function checkRepo(parsed) {
+      if (!parsed) {
+        spinner.hidden = true;
+        previewWrap.hidden = true;
+        submitBtn.disabled = true;
+        hintEl.textContent = "Enter owner/repo or full GitHub URL";
+        hintEl.className = "field-hint";
+        currentRepoData = null;
+        return;
+      }
+
+      spinner.hidden = false;
+      hintEl.textContent = "Looking up repository on GitHub…";
+      hintEl.className = "field-hint";
+
+      if (activeFetch) activeFetch.abort();
+      activeFetch = new AbortController();
+
+      try {
+        const res = await fetch(`https://api.github.com/repos/${parsed}`, {
+          signal: activeFetch.signal,
+          headers: { Accept: "application/vnd.github.v3+json" }
+        });
+
+        spinner.hidden = true;
+        if (!res.ok) {
+          if (res.status === 404) {
+            hintEl.textContent = "Repository not found on GitHub. Check spelling or visibility.";
+          } else {
+            hintEl.textContent = `GitHub responded with error HTTP ${res.status}.`;
+          }
+          hintEl.className = "field-hint error";
+          previewWrap.hidden = true;
+          submitBtn.disabled = true;
+          currentRepoData = null;
+          return;
+        }
+
+        const data = await res.json();
+        currentRepoData = data;
+        hintEl.textContent = "✓ Repository found!";
+        hintEl.className = "field-hint success";
+
+        const stars = data.stargazers_count != null ? fmtN(data.stargazers_count) : "0";
+        const lic = (data.license && data.license.spdx_id) || "None";
+        const lang = data.language || "Open Source";
+        const avatar = data.owner && data.owner.avatar_url ? data.owner.avatar_url : "";
+
+        previewContainer.innerHTML = `
+          <div class="preview-card">
+            ${avatar ? `<img class="preview-avatar" src="${safeUrl(avatar)}" alt="${esc(data.owner.login)}" onerror="this.remove()">` : ""}
+            <div class="preview-info">
+              <div class="preview-title-row">
+                <span class="preview-name">${esc(data.full_name)}</span>
+                <span class="preview-stars">★ ${stars}</span>
+              </div>
+              <p class="preview-desc">${esc(data.description || "No description provided.")}</p>
+              <div class="preview-meta">
+                <span>Category: <b>${esc(catSelect.value)}</b></span>
+                <span>Language: <b>${esc(lang)}</b></span>
+                <span>License: <b>${esc(lic)}</b></span>
+              </div>
+            </div>
+          </div>
+        `;
+        previewWrap.hidden = false;
+        submitBtn.disabled = false;
+      } catch (err) {
+        if (err.name === "AbortError") return;
+        spinner.hidden = true;
+        hintEl.textContent = "Failed to connect to GitHub API (" + err.message + ")";
+        hintEl.className = "field-hint error";
+        previewWrap.hidden = true;
+        submitBtn.disabled = true;
+        currentRepoData = null;
+      }
+    }
+
+    repoInput.addEventListener("input", () => {
+      const parsed = parseRepo(repoInput.value);
+      if (debounceTimer) clearTimeout(debounceTimer);
+      if (!parsed) {
+        checkRepo(null);
+        return;
+      }
+      debounceTimer = setTimeout(() => checkRepo(parsed), 350);
+    });
+
+    catSelect.addEventListener("change", () => {
+      if (currentRepoData) checkRepo(parseRepo(repoInput.value));
+    });
+
+    submitBtn.addEventListener("click", () => {
+      if (!currentRepoData) return;
+      const name = currentRepoData.name;
+      const cat = catSelect.value;
+      const note = noteInput.value.trim();
+      const stars = currentRepoData.stargazers_count || 0;
+      const url = currentRepoData.html_url;
+
+      const title = encodeURIComponent(`App Suggestion: ${name}`);
+      const body = encodeURIComponent(
+`### Repository
+${url}
+
+### Category
+${cat}
+
+### App Details
+- **Stars:** ${stars.toLocaleString()}
+- **Description:** ${currentRepoData.description || "None"}
+- **License:** ${currentRepoData.license?.spdx_id || "None"}
+- **Language:** ${currentRepoData.language || "None"}
+
+### Note from Submitter
+${note || "None"}
+
+---
+*Submitted via SourceShelf website*`
+      );
+
+      const issueUrl = `https://github.com/storm201/sourceshelf/issues/new?title=${title}&body=${body}&labels=app-suggestion`;
+      window.open(issueUrl, "_blank", "noopener,noreferrer");
+      closeModal();
+    });
+
+    openBtn.addEventListener("click", openModal);
+    if (closeBtn) closeBtn.addEventListener("click", closeModal);
+    if (cancelBtn) cancelBtn.addEventListener("click", closeModal);
+    if (scrim) scrim.addEventListener("click", closeModal);
+
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !modal.hidden && modal.classList.contains("on")) {
+        closeModal();
+      }
+    });
+  }
+
   // ---------------------------------------------------------- boot
   initTheme();
+  initSuggestModal();
   // header badge + nav wiring
   const badge = $("#nav-badge");
   const totalNew = arrivalsTotal();

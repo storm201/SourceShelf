@@ -1,0 +1,72 @@
+name: Suggest an App
+description: Suggest an open-source app to be indexed on SourceShelf
+title: "App Suggestion: [App Name]"
+labels: ["app-suggestion"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping expand the SourceShelf catalog! Please ensure the app is open-source and has a public repository on GitHub.
+  - type: input
+    id: repo_url
+    attributes:
+      label: GitHub Repository URL
+      description: Link to the GitHub repo (e.g. `https://github.com/owner/repo`)
+      placeholder: "https://github.com/owner/repo"
+    validations:
+      required: true
+  - type: dropdown
+    id: category
+    attributes:
+      label: Primary Category
+      description: What category best fits this app?
+      options:
+        - "AI & LLM"
+        - "Developer Tools"
+        - "Privacy & Security"
+        - "Notes & Knowledge"
+        - "Productivity"
+        - "Media & Audio"
+        - "Video & Streaming"
+        - "Photos & Design"
+        - "Files & Sync"
+        - "Communication"
+        - "Self-Hosting & Homelab"
+        - "Automation"
+        - "Networking"
+        - "System & Utilities"
+        - "Reading & Books"
+        - "Health & Fitness"
+        - "Finance"
+        - "Education"
+        - "Gaming & Emulation"
+        - "Download & Torrent"
+        - "Maps & Travel"
+        - "Monitoring & Dashboards"
+        - "Other"
+    validations:
+      required: true
+  - type: checkboxes
+    id: platforms
+    attributes:
+      label: Supported Platforms
+      description: Check all platforms where this app runs
+      options:
+        - label: Windows
+        - label: macOS
+        - label: Linux
+        - label: Android
+        - label: iOS
+        - label: Web
+        - label: Self-Hosted
+        - label: CLI / TUI
+        - label: Browser Extension
+        - label: VS Code
+  - type: textarea
+    id: why
+    attributes:
+      label: Why should it be added?
+      description: Briefly describe why you love this app or what makes it useful.
+      placeholder: "A great lightweight tool for..."
+    validations:
+      required: false

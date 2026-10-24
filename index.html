@@ -40,6 +40,7 @@
     <nav class="top-nav">
       <button class="navbtn" id="nav-all" data-view="all">All apps</button>
       <button class="navbtn" id="nav-new" data-view="new">New arrivals<span class="navbadge" id="nav-badge" hidden>0</span></button>
+      <button class="navbtn navbtn-suggest" id="nav-suggest" type="button" title="Suggest an open-source app to add">+ Suggest App</button>
     </nav>
 
     <div class="top-meta">
@@ -191,6 +192,76 @@
   <div class="drawer-b" id="drawer-body"></div>
 </div>
 <div class="scrim" id="scrim-side" style="z-index:94"></div>
+
+<!-- suggest modal -->
+<div class="scrim" id="scrim-suggest" style="z-index:98"></div>
+<div class="modal" id="modal-suggest" role="dialog" aria-modal="true" aria-labelledby="modal-suggest-title" hidden>
+  <div class="modal-card">
+    <div class="modal-h">
+      <div>
+        <h2 id="modal-suggest-title" class="modal-title">Suggest an open-source app</h2>
+        <p class="modal-sub">Paste any GitHub repo to preview and submit it for indexing.</p>
+      </div>
+      <button class="modal-close" id="modal-suggest-close" aria-label="Close dialog">×</button>
+    </div>
+    <div class="modal-b">
+      <div class="field">
+        <label for="suggest-repo">GitHub Repository</label>
+        <div class="input-wrap">
+          <input type="text" id="suggest-repo" placeholder="e.g. zed-industries/zed or https://github.com/..." autocomplete="off" spellcheck="false">
+          <span class="input-spinner" id="suggest-spinner" hidden></span>
+        </div>
+        <span class="field-hint" id="suggest-hint">Enter owner/repo or full GitHub URL</span>
+      </div>
+
+      <div class="field">
+        <label for="suggest-cat">Primary Category</label>
+        <select id="suggest-cat" class="select select-full">
+          <option value="AI & LLM">AI & LLM</option>
+          <option value="Developer Tools">Developer Tools</option>
+          <option value="Privacy & Security">Privacy & Security</option>
+          <option value="Notes & Knowledge">Notes & Knowledge</option>
+          <option value="Productivity">Productivity</option>
+          <option value="Media & Audio">Media & Audio</option>
+          <option value="Video & Streaming">Video & Streaming</option>
+          <option value="Photos & Design">Photos & Design</option>
+          <option value="Files & Sync">Files & Sync</option>
+          <option value="Communication">Communication</option>
+          <option value="Self-Hosting & Homelab">Self-Hosting & Homelab</option>
+          <option value="Automation">Automation</option>
+          <option value="Networking">Networking</option>
+          <option value="System & Utilities">System & Utilities</option>
+          <option value="Reading & Books">Reading & Books</option>
+          <option value="Health & Fitness">Health & Fitness</option>
+          <option value="Finance">Finance</option>
+          <option value="Education">Education</option>
+          <option value="Gaming & Emulation">Gaming & Emulation</option>
+          <option value="Download & Torrent">Download & Torrent</option>
+          <option value="Maps & Travel">Maps & Travel</option>
+          <option value="Monitoring & Dashboards">Monitoring & Dashboards</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="suggest-note">Why should it be added? (optional)</label>
+        <input type="text" id="suggest-note" placeholder="Lightweight, fast, great alternative to..." autocomplete="off">
+      </div>
+
+      <div class="suggest-preview-wrap" id="suggest-preview-wrap" hidden>
+        <span class="preview-label">Live Preview:</span>
+        <div id="suggest-preview"></div>
+      </div>
+    </div>
+    <div class="modal-f">
+      <button class="btn btn-ghost" id="modal-suggest-cancel" type="button">Cancel</button>
+      <button class="btn btn-primary" id="modal-suggest-submit" type="button" disabled>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.2.8-.6v-2c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.1.1 1.7 1.2 1.7 1.2 1 1.7 2.7 1.2 3.4.9.1-.7.4-1.2.7-1.5-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2a11.5 11.5 0 016 0C17.3 4.7 18.3 5 18.3 5c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .4.2.7.8.6 4.6-1.5 7.9-5.8 7.9-10.9C23.5 5.7 18.3.5 12 .5z"/></svg>
+        Submit on GitHub
+      </button>
+    </div>
+  </div>
+</div>
 
 <script src="data/config.js"></script>
 <script src="data/apps.js"></script>

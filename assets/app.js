@@ -891,8 +891,210 @@
     } catch (e) {}
   }
 
+  // ---------------------------------------------------------- suggest modal
+  function initSuggestModal() {
+    const modal = $("#modal-suggest");
+    const scrim = $("#scrim-suggest");
+    const openBtn = $("#nav-suggest");
+    const closeBtn = $("#modal-suggest-close");
+    const cancelBtn = $("#modal-suggest-cancel");
+    const submitBtn = $("#modal-suggest-submit");
+    const repoInput = $("#suggest-repo");
+    const catSelect = $("#suggest-cat");
+    const noteInput = $("#suggest-note");
+    const hintEl = $("#suggest-hint");
+    const spinner = $("#suggest-spinner");
+    const previewWrap = $("#suggest-preview-wrap");
+    const previewContainer = $("#suggest-preview");
+
+    if (!modal || !openBtn) return;
+
+    let currentRepoData = null;
+    let debounceTimer = null;
+    let activeFetch = null;
+
+    function openModal() {
+      modal.hidden = false;
+      requestAnimationFrame(() => {
+        modal.classList.add("on");
+        if (scrim) scrim.classList.add("on");
+      });
+      repoInput.focus();
+    }
+
+    function closeModal() {
+      modal.classList.remove("on");
+      if (scrim) scrim.classList.remove("on");
+      setTimeout(() => {
+        modal.hidden = true;
+        resetForm();
+      }, 200);
+    }
+
+    function resetForm() {
+      repoInput.value = "";
+      noteInput.value = "";
+      hintEl.textContent = "Enter owner/repo or full GitHub URL";
+      hintEl.className = "field-hint";
+      spinner.hidden = true;
+      previewWrap.hidden = true;
+      previewContainer.innerHTML = "";
+      submitBtn.disabled = true;
+      currentRepoData = null;
+      if (debounceTimer) clearTimeout(debounceTimer);
+      if (activeFetch) { activeFetch.abort(); activeFetch = null; }
+    }
+
+    function parseRepo(val) {
+      val = (val || "").trim();
+      const m = /(?:https?:\/\/)?(?:www\.)?github\.com\/([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)/i.exec(val);
+      if (m) return `${m[1]}/${m[2].replace(/\.git$/i, "")}`;
+      const m2 = /^([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)$/.exec(val);
+      if (m2) return `${m2[1]}/${m2[2]}`;
+      return null;
+    }
+
+    async function checkRepo(parsed) {
+      if (!parsed) {
+        spinner.hidden = true;
+        previewWrap.hidden = true;
+        submitBtn.disabled = true;
+        hintEl.textContent = "Enter owner/repo or full GitHub URL";
+        hintEl.className = "field-hint";
+        currentRepoData = null;
+        return;
+      }
+
+      spinner.hidden = false;
+      hintEl.textContent = "Looking up repository on GitHub…";
+      hintEl.className = "field-hint";
+
+      if (activeFetch) activeFetch.abort();
+      activeFetch = new AbortController();
+
+      try {
+        const res = await fetch(`https://api.github.com/repos/${parsed}`, {
+          signal: activeFetch.signal,
+          headers: { Accept: "application/vnd.github.v3+json" }
+        });
+
+        spinner.hidden = true;
+        if (!res.ok) {
+          if (res.status === 404) {
+            hintEl.textContent = "Repository not found on GitHub. Check spelling or visibility.";
+          } else {
+            hintEl.textContent = `GitHub responded with error HTTP ${res.status}.`;
+          }
+          hintEl.className = "field-hint error";
+          previewWrap.hidden = true;
+          submitBtn.disabled = true;
+          currentRepoData = null;
+          return;
+        }
+
+        const data = await res.json();
+        currentRepoData = data;
+        hintEl.textContent = "✓ Repository found!";
+        hintEl.className = "field-hint success";
+
+        const stars = data.stargazers_count != null ? fmtN(data.stargazers_count) : "0";
+        const lic = (data.license && data.license.spdx_id) || "None";
+        const lang = data.language || "Open Source";
+        const avatar = data.owner && data.owner.avatar_url ? data.owner.avatar_url : "";
+
+        previewContainer.innerHTML = `
+          <div class="preview-card">
+            ${avatar ? `<img class="preview-avatar" src="${safeUrl(avatar)}" alt="${esc(data.owner.login)}" onerror="this.remove()">` : ""}
+            <div class="preview-info">
+              <div class="preview-title-row">
+                <span class="preview-name">${esc(data.full_name)}</span>
+                <span class="preview-stars">★ ${stars}</span>
+              </div>
+              <p class="preview-desc">${esc(data.description || "No description provided.")}</p>
+              <div class="preview-meta">
+                <span>Category: <b>${esc(catSelect.value)}</b></span>
+                <span>Language: <b>${esc(lang)}</b></span>
+                <span>License: <b>${esc(lic)}</b></span>
+              </div>
+            </div>
+          </div>
+        `;
+        previewWrap.hidden = false;
+        submitBtn.disabled = false;
+      } catch (err) {
+        if (err.name === "AbortError") return;
+        spinner.hidden = true;
+        hintEl.textContent = "Failed to connect to GitHub API (" + err.message + ")";
+        hintEl.className = "field-hint error";
+        previewWrap.hidden = true;
+        submitBtn.disabled = true;
+        currentRepoData = null;
+      }
+    }
+
+    repoInput.addEventListener("input", () => {
+      const parsed = parseRepo(repoInput.value);
+      if (debounceTimer) clearTimeout(debounceTimer);
+      if (!parsed) {
+        checkRepo(null);
+        return;
+      }
+      debounceTimer = setTimeout(() => checkRepo(parsed), 350);
+    });
+
+    catSelect.addEventListener("change", () => {
+      if (currentRepoData) checkRepo(parseRepo(repoInput.value));
+    });
+
+    submitBtn.addEventListener("click", () => {
+      if (!currentRepoData) return;
+      const name = currentRepoData.name;
+      const cat = catSelect.value;
+      const note = noteInput.value.trim();
+      const stars = currentRepoData.stargazers_count || 0;
+      const url = currentRepoData.html_url;
+
+      const title = encodeURIComponent(`App Suggestion: ${name}`);
+      const body = encodeURIComponent(
+`### Repository
+${url}
+
+### Category
+${cat}
+
+### App Details
+- **Stars:** ${stars.toLocaleString()}
+- **Description:** ${currentRepoData.description || "None"}
+- **License:** ${currentRepoData.license?.spdx_id || "None"}
+- **Language:** ${currentRepoData.language || "None"}
+
+### Note from Submitter
+${note || "None"}
+
+---
+*Submitted via SourceShelf website*`
+      );
+
+      const issueUrl = `https://github.com/storm201/sourceshelf/issues/new?title=${title}&body=${body}&labels=app-suggestion`;
+      window.open(issueUrl, "_blank", "noopener,noreferrer");
+      closeModal();
+    });
+
+    openBtn.addEventListener("click", openModal);
+    if (closeBtn) closeBtn.addEventListener("click", closeModal);
+    if (cancelBtn) cancelBtn.addEventListener("click", closeModal);
+    if (scrim) scrim.addEventListener("click", closeModal);
+
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !modal.hidden && modal.classList.contains("on")) {
+        closeModal();
+      }
+    });
+  }
+
   // ---------------------------------------------------------- boot
   initTheme();
+  initSuggestModal();
   // header badge + nav wiring
   const badge = $("#nav-badge");
   const totalNew = arrivalsTotal();
